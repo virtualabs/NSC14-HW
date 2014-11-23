@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="fr">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Hardware Hacking - Workshop</title>
+
+		<meta name="description" content="Hardware Hacking Workshop: Fun with RF remotes">
+		<meta name="author" content="Damien Cauquil">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/beige.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', use the PDF print sheet -->
+		<script>
+			document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<div class="slides">
+				<section>
+					<h1>Hardware Hacking Workshop</h1>
+                    <h3>Fun with RF Remotes</h3>
+                    <br/>
+                    <p><a href="http://www.virtualabs.fr/">Damien Cauquil</a> / <a href="http://twitter.com/virtualabs">@virtualabs</a>
+					</p>
+				</section>
+
+				<section>
+					<h2>Who am I ?</h2>
+                    <ul>
+                        <li>R&amp;D Director @Sysdream</li>
+                        <li>Various security related fields:
+                        <ul>
+                                <li>Reverse-engineering</li>
+                                <li>Electronics</li>
+                                <li>Lockpicking</li>
+                                <li>Coding</li>
+                                <li>Beer</li>
+                        </ul></li>
+                    </ul>
+                </section>
+
+                <section>
+                <h2>Overview</h2>
+                <br/>
+                <ul>
+                    <li>RF remotes 101</li>
+                    <li>Software Defined Radio</li>
+                    <li>Signal encoding</li>
+                    <li>Reversing/repurposing a basic remote</li>
+                    <li>How to mod your remote</li>
+                    <li>Tests &amp; results</li>
+                </ul>
+                </section>
+
+                <section>
+                    <section>
+                        <h1>RF Remotes 101</h1>
+                    </section>
+
+                    <section>
+                    <h2>RF remotes 101</h2>
+                    <br/>
+                    <ul>
+                        <li>Radio Frequency remotes are everywhere</li>
+                        <ul>
+                            <li>Garage door opening systems</li>
+                            <li>Wireless doorbells and chimes</li>
+                            <li>Home alarm systems</li>
+                            <li>Baby monitoring systems</li>
+                        </ul>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>Radio gaga</h2>
+                    <br/>
+                    <ul>
+                        <li>Radio-based communication devices</li>
+                        <ul>
+                            <li>Usually 433 MHz or 868 MHz baseband</li>
+                            <li>Poor encryption used (if any)</li>
+                            <li>Implement some kind of digital code</li>
+                            <li>Can be sniffed with cheap HW</li>
+                        </ul>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>RF systems principle</h2>
+                    <br/>
+                    <ul>
+                        <li class="fragment roll-in">Usually microswitches allow code setup,</li>
+                        <li class="fragment roll-in">which is encoded before to be sent to</li>
+                        <li class="fragment roll-in">a power stage dealing with RF.</li>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>Remote phone home</h2>
+                    <br/>
+                    <ul>
+                        <li>Two types of RF remotes:</li>
+                        <ul>
+                            <li>Remotes using static code</li>
+                            <li>Remotes using dynamic code (a.k.a. rolling codes)</li>
+                        </ul>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>Remote teardown</h2>
+                    <br/>
+                    <ul>
+                        <li>RF remote is usually composed of</li>
+                        <ul>
+                            <li>an emitter stage, using a defined baseband</li>
+                            <li>a control stage, sending a specific signal</li>
+                            <li>a power source, usually 12V or 3V for emitter</li>
+                        </ul>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>Remote teardown</h2>
+                    <br/>
+                    <p>Sample emitter stage</p>
+                    <img src="images/rf-teardown-rf.png"/>
+                    </section>
+
+                    <section>
+                    <h2>Remote teardown</h2>
+                    <br/>
+                    <p>Microcontroller (control stage)</p>
+                    <img src="images/rf-teardown-uc.png"/>
+                    </section>
+
+                    <section>
+                    <h2>Remote teardown</h2>
+                    <br/>
+                    <p>Power source</p>
+                    <img src="images/rf-teardown-power.png"/>
+                    </section>
+
+                    <section>
+                    <h2>Power saving</h2>
+                    <br/>
+                    <p>To save power, remotes are usually active only when a button is pressed.</p>
+                    </section>
+
+                </section>
+
+                <section>
+                    <section>
+                        <h1>Software Defined Radio</h1>
+                    </section>
+
+                    <section>
+                    <h2>SDR Basics</h2>
+                    <br/>
+                    <ul>
+                        <li>SDR allows:</li>
+                        <ul>
+                            <li>Easy RF sniffing (&lt;=1 GHz)</li>
+                            <li>Transmit various RF signals</li>
+                            <li>Using gnuradio-enable software</li>
+                            <li>Python scripting</li>
+                        </ul>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>SDR Devices</h2>
+                    <br/>
+                    <ul>
+                        <li>RTL2832 based devices (USB TNT Tuner, RX only)</li>
+                        <li>HackRF (RX/TX half-duplex)</li>
+                        <li>BladeRF (RX/TX full-duplex)</li>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>Pros &amp; Cons</h2>
+                    <br/>
+                    <ul>
+                        <li><b>Pros</b><ul>
+                            <li>Software only, easy to develop/adapt</li>
+                            <li>Handles RX/TX (mostly)</li>
+                            <li>Scriptable</li>
+                        </ul></li>
+                        <li><b>Cons</b><ul>
+                            <li>Costs around 300-400 USD</li>
+                            <li>Needs specific knowledge (signal processing)</li>
+                            <li>You have to develop dedicated tools by yourself</li>
+                        </li>
+                    </ul>
+                    </section>
+
+                    <section>
+                    <h2>Capturing radio signals</h2>
+                    <br/>
+                    <ul>
+                        <li>Can be performed with a popular USB TV-Tuner (RTL2832)</li>
+                        <li>GQRX makes it easy to scan, detect and capture AM/FM modulated signals</li>
+                        <li>Can be saved as WAV files, for further analysis*</li>
+                        <li>Audacity helps a lot (visualization/decoding)</li>
+                    </ul>
+                    </section>
+
+                    <section>
+                        <h1>Practice Time !</h1>
+                    </section>
+
+                    <section>
+                        <h2>1. Detecting our signal</h2>
+                        <br/>
+                        <p>With the help of GQRX, we scan the available frequencies, looking for a matching signal around 433.92 MHz.</p>
+                    </section>
+
+                    <section>
+                        <h2>2. Tuning the receiver</h2>
+                        <br/>
+                        <p>Some adjustments are made to GQRX:</p>
+                        <ul>
+                            <li>AM modulation is selected</li>
+                            <li>Adaptative gain is set to ON</li>
+                            <li>Frequency is adjusted to fit the one detected</li>
+                            <li>Audio gain is adjusted</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>3. Capturing the signal</h2>
+                        <br/>
+                        <p>Press the REC button in the bottom-right corner of the UI (demodulator). A WAV file is created,<br/> named <i>gqrx-TIMESTAMP.wav</i></p>
+                        </section>
+
+                    <section>
+                        <h2>4. Visualization</h2>
+                        <br/>
+                        <p>Captured signal is viewed with Audacity.</p>
+                    </section>
+
+                </section>
+
+                <section>
+                    <section>
+                    <h1>Signal encoding</h1>
+                    <h3>(and decoding)</h3>
+                    </section>
+
+                    <section>
+                        <h2>Many ways to encode a signal</h2>
+                        <br/>
+                        <ul>
+                            <li>Different modulation schemes: amplitude (AM) and frequency (FM)</li>
+                            <li>Analog or digital signal</li>
+                            <li>Clear or encrypted</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Basic AM encodings</h2>
+                        <br/>
+                        <ul>
+                            <li>OOK: On/Off Keying</li>
+                            <li>ASK: Amplitude Shift Keying</li>
+                            <li>PWM: Pulse Width Modulation</li>
+                            <li>PPM: Pulse Phase Modulation</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Identifying our signal encoding</h2>
+                        <br/>
+                        <ul>
+                            <li>What does the signal look like ?</li>
+                            <li>What information may be encoded ?</li>
+                            <li>How much information is encoded ?</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Our remote encoding scheme</h2>
+                        <br/>
+                        <ul>
+                            <li>OOK is used (very common when dealing with RF remotes)</li>
+                            <li>PWM is used</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h1>Reversing a basic remote</h1>
+                    </section>
+
+                    <section>
+                        <h2>Electronic overview</h2>
+                        <br/>
+                        <div>
+                        <p>A RF remote is basically composed of:</p>
+                            <ul>
+                                <li>A power source</li>
+                                <li>A RF emitter stage</li>
+                                <li>A control stage (dealing with the encoding)</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h2>Information sent</h2>
+                        <br/>
+                        <ul>
+                            <li>Information sent is encoded with microswitches and tactile switches</li>
+                            <li>It defines a serie of bits composing a binary code</li>
+                            <li>Both the remote and the receiver know the code</li>
+                            <li>This code is encoded and sent over the air</li>
+                            <li>The receiver decodes it, and take action</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Encoding stage</h2>
+                        <br/>
+                        <p>Encoding is usually performed by:</p>
+                        <ul>
+                            <li>Dedicated chips, such as HT12E (Holtek)</li>
+                            <li>Microcontrollers (means some kind of firmware)</li>
+                            <li>Passive electronics components (simple signal)</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h1>Wait, can we turn this remote into something fun ?</h1>
+                        <h3>(and for profit ?)</h3>
+                    </section>
+
+                    <section>
+                        <h2>Possible mods/hacks</h2>
+                        <br/>
+                        <ul>
+                            <li>Cheap 433 MHz jammer</li>
+                            <li>Shared code bruteforcer</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>433MHz Jammer</h2>
+                        <br/>
+                        <ul>
+                            <li>Easy hack: only requires some wires</li>
+                            <li>Jamming is performed by keeping sending "ones" (due to OOK)</li>
+                            <li>May be improved, works better with noise generation.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Shared code bruteforcer</h2>
+                        <br/>
+                        <ul>
+                            <li>Hardware bruteforcer</li>
+                            <li>Simpler than micro-controllers</li>
+                            <li>Requires an extra PCB</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>How it works ?</h2>
+                        <br/>
+                        <ul>
+                            <li>We need a clock, to generate ticks</li>
+                            <li>We also needs a binary counter, to enumerate "passwords"</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Hardware bruteforcer</h2>
+                        <br/>
+                        <img src="images/rf-remote-bf.png"/>
+                    </section>
+
+                    <section>
+                        <h2>Bruteforcer design</h2>
+                        <br/>
+                        <ul>
+                            <li>NE555 is wired as an oscillator with a frequency of ~15 Hz</li>
+                            <li>NE555 feeds a CD4040BE (binary counter)</li>
+                            <li>Diodes simulate the switch state: floating if counter bit is set, connected to ground otherwise.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>Frequency matters !</h2>
+                        <br/>
+                        <p>The 15 Hz frequency was not chosen randomly: it allows the RF remote to send at least the encoded code twice, in order to optimize the bruteforce attack.</p>
+                    </section>
+
+                </section>
+
+                <section>
+                    <section>
+                        <h1>How to mod your remote</h1>
+                    </section>
+
+                    <section>
+                        <h2>Bill of materials</h2>
+                        <br/>
+                        <ul>
+                            <li>1 x Wireless chime</li>
+                            <li>1 x RF Remote PCB</li>
+                            <li>2 x 680 ohms resistors</li>
+                            <li>1 x 47uF polarized capacitor</li>
+                            <li>6 x 1N4148 diodes</li>
+                            <li>1 x NE555 (U1)</li>
+                            <li>1 x CD4040BE (U2)</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2>1. Solder the resistors</h2>
+                        <br/>
+                        <img src="workshop/resistors.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>2. Solder the CD4040BE</h2>
+                        <br/>
+                        <img src="workshop/ne555-cd4040be.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>3. Solder the NE555</h2>
+                        <br/>
+                        <img src="workshop/ne555-cd4040be.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>4. Solder the capacitor</h2>
+                        <br/>
+                        <img src="workshop/capacitor.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>5. Solder the diodes (1/2)</h2>
+                        <br/>
+                        <ul>
+                            <li>Cut the cathode, left 5mm clear.</li>
+                            <li>Add some solder on the microswitch contact.</li>
+                        </ul>
+                        <img src="workshop/diode0.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>6. Solder the diodes (2/2)</h2>
+                        <br/>
+                        <ul>
+                            <li>Solder the diodes vertically, the 5mm leg on the microswitch pin</li>
+                            <li>You can use a pair of pliers to be more precise.</li>
+                        </ul>
+                        <img src="workshop/diodes1.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>7. Solder the power wires (1/2)</h2>
+                        <br/>
+                        <ul>
+                            <li>Solder a wire from (+) to the upper pin of the tactile switch.</li>
+                        </ul>
+                        <img src="workshop/wires.jpg"/>
+                    </section>
+
+                    <section>
+                        <h2>8. Solder the power wires (2/2)</h2>
+                        <br/>
+                        <ul>
+                            <li>Solder a wire from (-) to the ground.</li>
+                        </ul>
+                    </section>
+
+                </section>
+
+
+                <section>
+                <h1>Questions ?</h2>
+                <br/>
+                <p>and maybe answers =)</p>
+                </section>
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+            });
+
+		</script>
+
+	</body>
+</html>
